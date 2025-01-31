@@ -11,9 +11,26 @@ public class PlayerMovement : MonoBehaviour
     Vector3 playerInput;
 
     Vector3 cameraRelativeMovement;
+    Vector3 finalVelocity;
 
     [SerializeField] float movementSpeed;
     [SerializeField] float rotationSpeed;
+
+    //Gravity
+    float gravity = -9.8f;
+    float groundedGravity = -0.05f;
+
+    //Jump Variables
+    bool isJumpPressed = false;
+    float initialJumpVelocity;
+    float maxJumpHeight = 1;
+    float maxJumpTime = 0.5f;
+    bool isJumping = false;
+
+    private void Awake()
+    {
+        SetupJump();
+    }
 
     private void Start()
     {
@@ -24,6 +41,8 @@ public class PlayerMovement : MonoBehaviour
     {
         HandleInput();
         HandleRotation();
+        HandleGravity();
+        HandleJump();
     }
 
     private void HandleRotation()
@@ -43,6 +62,13 @@ public class PlayerMovement : MonoBehaviour
 
     private void HandleInput()
     {
+        if (Input.GetKey(KeyCode.Space))
+        {
+            isJumpPressed = true;
+        }
+        else
+            isJumpPressed = false;
+
         xInput = Input.GetAxis("Horizontal");
         yInput = Input.GetAxis("Vertical");
 
@@ -50,8 +76,32 @@ public class PlayerMovement : MonoBehaviour
         playerInput.z = yInput;
 
         cameraRelativeMovement = ConvertToCameraSpace(playerInput);
-        characterController.Move(movementSpeed * cameraRelativeMovement * Time.deltaTime);
+        finalVelocity = new Vector3(cameraRelativeMovement.x, finalVelocity.y, cameraRelativeMovement.z);
+        characterController.Move(movementSpeed * finalVelocity * Time.deltaTime);
     }
+
+    void HandleJump()
+    {
+        print(isJumping + " " + characterController.isGrounded + " " + isJumpPressed);
+        if (!isJumping && characterController.isGrounded && isJumpPressed)
+        {
+            isJumping = true;
+            finalVelocity.y = initialJumpVelocity;
+        }
+    }
+
+    void HandleGravity()
+    {
+        if (characterController.isGrounded)
+        {
+            finalVelocity.y = groundedGravity;
+        }
+        else
+        {
+            finalVelocity.y = gravity;
+        }
+    }
+
 
     Vector3 ConvertToCameraSpace(Vector3 vectorToRotate)
     {
@@ -75,5 +125,13 @@ public class PlayerMovement : MonoBehaviour
         Vector3 vectorRotatedToCameraSpace = cameraForwardZProduct + cameraRightXProduct;
         vectorRotatedToCameraSpace.y = currentYValue;
         return vectorRotatedToCameraSpace;
+    }
+    
+    void SetupJump()
+    {
+        //The jump is always a parabola, therefore max height is exactly half the time
+        float timeToApex = maxJumpTime / 2;
+        gravity = (-2 * maxJumpHeight) / Mathf.Pow(timeToApex, 2);
+        initialJumpVelocity = (2 * maxJumpHeight) / timeToApex;
     }
 }
